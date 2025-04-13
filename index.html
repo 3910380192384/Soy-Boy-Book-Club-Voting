@@ -124,7 +124,7 @@
     
     <div class="instructions">
         <h3>Instructions:</h3>
-        <p>Drag and drop the books to rank them in your order of preference (1 = most preferred, 12 = least preferred).</p>
+        <p>Drag and drop the books to rank them in your order of preference (1 = most preferred, 5 = least preferred).</p>
         <p>Once you're happy with your ranking, enter your name and click "Submit Vote" to record your preferences.</p>
     </div>
 
@@ -170,20 +170,13 @@
     </div>
 
     <script>
-        // Book data from your screenshot
+        // Updated book data - removed the books you specified
         const books = [
-            { id: 1, title: "White Noise", author: "Don DeLillo" },
-            { id: 2, title: "Gone Girl", author: "Gillian Flynn" },
-            { id: 3, title: "The Witch's Heart", author: "Genevieve Gornichec" },
-            { id: 4, title: "The Fellowship of the Ring", author: "J.R.R. Tolkien" },
-            { id: 5, title: "Dark Matter", author: "Blake Crouch" },
-            { id: 6, title: "Devolution: A Firsthand Account of the Rainier Sasquatch Massacre", author: "Max Brooks" },
-            { id: 7, title: "Mexican Gothic", author: "Silvia Moreno-Garcia" },
-            { id: 8, title: "Circe", author: "Madeline Miller" },
-            { id: 9, title: "The Fifth Season", author: "N.K. Jemisin" },
-            { id: 10, title: "Jurassic Park", author: "Michael Crichton" },
-            { id: 11, title: "Annihilation", author: "Jeff VanderMeer" },
-            { id: 12, title: "Stories of Your Life and Others", author: "Ted Chiang" }
+            { id: 1, title: "Gone Girl", author: "Gillian Flynn" },
+            { id: 2, title: "The Fellowship of the Ring", author: "J.R.R. Tolkien" },
+            { id: 3, title: "Dark Matter", author: "Blake Crouch" },
+            { id: 4, title: "Devolution: A Firsthand Account of the Rainier Sasquatch Massacre", author: "Max Brooks" },
+            { id: 5, title: "The Fifth Season", author: "N.K. Jemisin" }
         ];
 
         // Shuffle the books initially to avoid bias
