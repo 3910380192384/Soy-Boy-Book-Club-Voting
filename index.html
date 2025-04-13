@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Club Ranked Choice Voting</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f7f1;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #3498db;
+            margin-top: 30px;
+        }
+        .instructions {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 25px;
+            border-left: 5px solid #3498db;
+        }
+        .book-item {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: grab;
+        }
+        .book-item:hover {
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .book-item.dragging {
+            opacity: 0.5;
+            background-color: #f8f9fa;
+        }
+        .drag-handle {
+            color: #999;
+            margin-right: 10px;
+            cursor: grab;
+        }
+        .rank {
+            font-weight: bold;
+            margin-right: 15px;
+            color: #3498db;
+            min-width: 30px;
+            text-align: center;
+        }
+        .book-title {
+            flex-grow: 1;
+        }
+        .author {
+            color: #666;
+            font-style: italic;
+            margin-left: 15px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .results {
+            margin-top: 30px;
+            display: none;
+        }
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .results-table th, .results-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .results-table th {
+            background-color: #f2f2f2;
+        }
+        .export-section {
+            margin-top: 30px;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .voter-name {
+            margin-bottom: 15px;
+        }
+        .voter-name input {
+            padding: 8px;
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Book Club Ranked Choice Voting</h1>
+    
+    <div class="instructions">
+        <h3>Instructions:</h3>
+        <p>Drag and drop the books to rank them in your order of preference (1 = most preferred, 12 = least preferred).</p>
+        <p>Once you're happy with your ranking, enter your name and click "Submit Vote" to record your preferences.</p>
+    </div>
+
+    <div class="voter-name">
+        <label for="name">Your Name:</label>
+        <input type="text" id="name" placeholder="Enter your name" required>
+    </div>
+
+    <div id="book-list">
+        <!-- Books will be added here by JavaScript -->
+    </div>
+
+    <button id="submit-vote">Submit Vote</button>
+    <button id="show-results" class="hidden">Show Current Results</button>
+
+    <div id="results" class="results">
+        <h2>Current Voting Results</h2>
+        <p>Ranked choice voting winners calculated across <span id="voter-count">0</span> votes:</p>
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Book Title</th>
+                    <th>Points</th>
+                </tr>
+            </thead>
+            <tbody id="results-body">
+                <!-- Results will be added here -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="export-section hidden" id="export-section">
+        <h2>Export/Import Data</h2>
+        <p>Copy this data to save the current voting state or to transfer to another device:</p>
+        <textarea id="export-data" rows="5" style="width: 100%;" readonly></textarea>
+        <button id="copy-data">Copy to Clipboard</button>
+        
+        <h3>Import Data</h3>
+        <p>Paste previously exported data to restore voting state:</p>
+        <textarea id="import-data" rows="5" style="width: 100%;"></textarea>
+        <button id="import-button">Import Data</button>
+    </div>
+
+    <script>
+        // Book data from your screenshot
+        const books = [
+            { id: 1, title: "White Noise", author: "Don DeLillo" },
+            { id: 2, title: "Gone Girl", author: "Gillian Flynn" },
+            { id: 3, title: "The Witch's Heart", author: "Genevieve Gornichec" },
+            { id: 4, title: "The Fellowship of the Ring", author: "J.R.R. Tolkien" },
+            { id: 5, title: "Dark Matter", author: "Blake Crouch" },
+            { id: 6, title: "Devolution: A Firsthand Account of the Rainier Sasquatch Massacre", author: "Max Brooks" },
+            { id: 7, title: "Mexican Gothic", author: "Silvia Moreno-Garcia" },
+            { id: 8, title: "Circe", author: "Madeline Miller" },
+            { id: 9, title: "The Fifth Season", author: "N.K. Jemisin" },
+            { id: 10, title: "Jurassic Park", author: "Michael Crichton" },
+            { id: 11, title: "Annihilation", author: "Jeff VanderMeer" },
+            { id: 12, title: "Stories of Your Life and Others", author: "Ted Chiang" }
+        ];
+
+        // Shuffle the books initially to avoid bias
+        const shuffledBooks = [...books].sort(() => Math.random() - 0.5);
+        
+        // Add books to the list
+        const bookList = document.getElementById('book-list');
+        shuffledBooks.forEach((book, index) => {
+            const bookItem = document.createElement('div');
+            bookItem.className = 'book-item';
+            bookItem.setAttribute('draggable', 'true');
+            bookItem.setAttribute('data-book-id', book.id);
+            
+            bookItem.innerHTML = `
+                <div class="drag-handle">☰</div>
+                <div class="rank">${index + 1}</div>
+                <div class="book-title">${book.title}</div>
+                <div class="author">${book.author}</div>
+            `;
+            
+            bookList.appendChild(bookItem);
+        });
+
+        // Drag and drop functionality
+        let draggedItem = null;
+
+        document.querySelectorAll('.book-item').forEach(item => {
+            item.addEventListener('dragstart', function() {
+                draggedItem = this;
+                setTimeout(() => this.classList.add('dragging'), 0);
+            });
+            
+            item.addEventListener('dragend', function() {
+                this.classList.remove('dragging');
+                draggedItem = null;
+                updateRanks();
+            });
+            
+            item.addEventListener('dragover', function(e) {
+                e.preventDefault();
+            });
+            
+            item.addEventListener('drop', function(e) {
+                e.preventDefault();
+                
+                if (this !== draggedItem) {
+                    const allItems = Array.from(bookList.querySelectorAll('.book-item'));
+                    const draggedIndex = allItems.indexOf(draggedItem);
+                    const targetIndex = allItems.indexOf(this);
+                    
+                    if (draggedIndex < targetIndex) {
+                        bookList.insertBefore(draggedItem, this.nextSibling);
+                    } else {
+                        bookList.insertBefore(draggedItem, this);
+                    }
+                    
+                    updateRanks();
+                }
+            });
+        });
+
+        // Update rank numbers after reordering
+        function updateRanks() {
+            document.querySelectorAll('.book-item').forEach((item, index) => {
+                item.querySelector('.rank').textContent = index + 1;
+            });
+        }
+
+        // Handle voting data
+        let votes = [];
+        
+        document.getElementById('submit-vote').addEventListener('click', function() {
+            const nameInput = document.getElementById('name');
+            const voterName = nameInput.value.trim();
+            
+            if (!voterName) {
+                alert('Please enter your name before submitting your vote.');
+                return;
+            }
+            
+            const voteData = {
+                voter: voterName,
+                rankings: []
+            };
+            
+            document.querySelectorAll('.book-item').forEach((item, index) => {
+                const bookId = parseInt(item.getAttribute('data-book-id'));
+                const rank = index + 1;
+                
+                voteData.rankings.push({
+                    bookId: bookId,
+                    rank: rank
+                });
+            });
+            
+            // Check if this voter has already voted
+            const existingVoteIndex = votes.findIndex(v => v.voter === voterName);
+            if (existingVoteIndex !== -1) {
+                // Replace existing vote
+                votes[existingVoteIndex] = voteData;
+                alert(`Your previous vote has been updated, ${voterName}!`);
+            } else {
+                // Add new vote
+                votes.push(voteData);
+                alert(`Thank you for voting, ${voterName}!`);
+            }
+            
+            // Save votes to localStorage
+            localStorage.setItem('bookClubVotes', JSON.stringify(votes));
+            
+            // Show results button
+            document.getElementById('show-results').classList.remove('hidden');
+            document.getElementById('export-section').classList.remove('hidden');
+            
+            // Update export data
+            document.getElementById('export-data').value = JSON.stringify(votes);
+            
+            // Calculate and display results
+            calculateResults();
+        });
+
+        // Show results
+        document.getElementById('show-results').addEventListener('click', function() {
+            const resultsDiv = document.getElementById('results');
+            if (resultsDiv.style.display === 'block') {
+                resultsDiv.style.display = 'none';
+                this.textContent = 'Show Current Results';
+            } else {
+                resultsDiv.style.display = 'block';
+                this.textContent = 'Hide Results';
+                calculateResults();
+            }
+        });
+
+        // Load existing votes from localStorage if available
+        window.addEventListener('load', function() {
+            const storedVotes = localStorage.getItem('bookClubVotes');
+            if (storedVotes) {
+                votes = JSON.parse(storedVotes);
+                if (votes.length > 0) {
+                    document.getElementById('show-results').classList.remove('hidden');
+                    document.getElementById('export-section').classList.remove('hidden');
+                    document.getElementById('export-data').value = storedVotes;
+                }
+            }
+        });
+
+        // Calculate ranked choice voting results
+        function calculateResults() {
+            if (votes.length === 0) return;
+            
+            document.getElementById('voter-count').textContent = votes.length;
+            
+            // Calculate Borda count (simple rank-based scoring)
+            // In this method, each first-place vote is worth n points (n = total choices),
+            // second-place is worth n-1 points, and so on
+            const totalBooks = books.length;
+            let bookScores = {};
+            
+            // Initialize scores
+            books.forEach(book => {
+                bookScores[book.id] = 0;
+            });
+            
+            // Calculate scores based on rankings
+            votes.forEach(vote => {
+                vote.rankings.forEach(ranking => {
+                    // Points = (total books + 1) - rank
+                    // So 1st place gets totalBooks points, 2nd gets totalBooks-1, etc.
+                    bookScores[ranking.bookId] += (totalBooks + 1) - ranking.rank;
+                });
+            });
+            
+            // Convert to array for sorting
+            const results = books.map(book => ({
+                id: book.id,
+                title: book.title,
+                author: book.author,
+                score: bookScores[book.id]
+            }));
+            
+            // Sort by score (highest first)
+            results.sort((a, b) => b.score - a.score);
+            
+            // Display results
+            const resultsBody = document.getElementById('results-body');
+            resultsBody.innerHTML = '';
+            
+            results.forEach((result, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${result.title} <i>(${result.author})</i></td>
+                    <td>${result.score}</td>
+                `;
+                resultsBody.appendChild(row);
+            });
+            
+            document.getElementById('results').style.display = 'block';
+        }
+
+        // Copy export data to clipboard
+        document.getElementById('copy-data').addEventListener('click', function() {
+            const exportData = document.getElementById('export-data');
+            exportData.select();
+            document.execCommand('copy');
+            alert('Data copied to clipboard!');
+        });
+
+        // Import data
+        document.getElementById('import-button').addEventListener('click', function() {
+            const importData = document.getElementById('import-data').value.trim();
+            if (!importData) {
+                alert('Please paste data to import.');
+                return;
+            }
+            
+            try {
+                const importedVotes = JSON.parse(importData);
+                if (Array.isArray(importedVotes)) {
+                    votes = importedVotes;
+                    localStorage.setItem('bookClubVotes', JSON.stringify(votes));
+                    document.getElementById('export-data').value = importData;
+                    
+                    if (votes.length > 0) {
+                        document.getElementById('show-results').classList.remove('hidden');
+                        calculateResults();
+                        alert('Data imported successfully!');
+                    }
+                } else {
+                    throw new Error('Invalid data format');
+                }
+            } catch (error) {
+                alert('Invalid data format. Please check the imported data.');
+            }
+        });
+    </script>
+</body>
+</html>
