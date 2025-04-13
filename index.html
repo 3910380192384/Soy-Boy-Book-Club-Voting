@@ -99,12 +99,6 @@
         .results-table th {
             background-color: #f2f2f2;
         }
-        .export-section {
-            margin-top: 30px;
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-        }
         .voter-name {
             margin-bottom: 15px;
         }
@@ -115,6 +109,22 @@
             border-radius: 4px;
         }
         .hidden {
+            display: none;
+        }
+        .success-message {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            display: none;
+        }
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
             display: none;
         }
     </style>
@@ -138,44 +148,25 @@
     </div>
 
     <button id="submit-vote">Submit Vote</button>
-    <button id="show-results" class="hidden">Show Current Results</button>
-
-    <div id="results" class="results">
-        <h2>Current Voting Results</h2>
-        <p>Ranked choice voting winners calculated across <span id="voter-count">0</span> votes:</p>
-        <table class="results-table">
-            <thead>
-                <tr>
-                    <th>Rank</th>
-                    <th>Book Title</th>
-                    <th>Points</th>
-                </tr>
-            </thead>
-            <tbody id="results-body">
-                <!-- Results will be added here -->
-            </tbody>
-        </table>
+    
+    <div id="success-message" class="success-message">
+        Thank you for voting! Your vote has been recorded.
     </div>
-
-    <div class="export-section hidden" id="export-section">
-        <h2>Export/Import Data</h2>
-        <p>Copy this data to save the current voting state or to transfer to another device:</p>
-        <textarea id="export-data" rows="5" style="width: 100%;" readonly></textarea>
-        <button id="copy-data">Copy to Clipboard</button>
-        
-        <h3>Import Data</h3>
-        <p>Paste previously exported data to restore voting state:</p>
-        <textarea id="import-data" rows="5" style="width: 100%;"></textarea>
-        <button id="import-button">Import Data</button>
+    
+    <div id="error-message" class="error-message">
+        There was an error submitting your vote. Please try again.
     </div>
 
     <script>
-        // Updated book data - removed the books you specified
+        // Google Script Web App URL
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw5VCSfrhy5uoXI1Vm53n4fdzvLXlCJhAFyNYHxFmr44W-j16ybGIry-iM9PjxoffDX/exec';
+        
+        // Book data
         const books = [
             { id: 1, title: "Gone Girl", author: "Gillian Flynn" },
             { id: 2, title: "The Fellowship of the Ring", author: "J.R.R. Tolkien" },
             { id: 3, title: "Dark Matter", author: "Blake Crouch" },
-            { id: 4, title: "Devolution: A Firsthand Account of the Rainier Sasquatch Massacre", author: "Max Brooks" },
+            { id: 4, title: "Devolution", author: "Max Brooks" },
             { id: 5, title: "The Fifth Season", author: "N.K. Jemisin" }
         ];
 
@@ -245,9 +236,7 @@
             });
         }
 
-        // Handle voting data
-        let votes = [];
-        
+        // Handle form submission
         document.getElementById('submit-vote').addEventListener('click', function() {
             const nameInput = document.getElementById('name');
             const voterName = nameInput.value.trim();
@@ -272,147 +261,35 @@
                 });
             });
             
-            // Check if this voter has already voted
-            const existingVoteIndex = votes.findIndex(v => v.voter === voterName);
-            if (existingVoteIndex !== -1) {
-                // Replace existing vote
-                votes[existingVoteIndex] = voteData;
-                alert(`Your previous vote has been updated, ${voterName}!`);
-            } else {
-                // Add new vote
-                votes.push(voteData);
-                alert(`Thank you for voting, ${voterName}!`);
-            }
-            
-            // Save votes to localStorage
-            localStorage.setItem('bookClubVotes', JSON.stringify(votes));
-            
-            // Show results button
-            document.getElementById('show-results').classList.remove('hidden');
-            document.getElementById('export-section').classList.remove('hidden');
-            
-            // Update export data
-            document.getElementById('export-data').value = JSON.stringify(votes);
-            
-            // Calculate and display results
-            calculateResults();
+            // Submit to Google Script
+            submitToGoogleScript(voteData);
         });
 
-        // Show results
-        document.getElementById('show-results').addEventListener('click', function() {
-            const resultsDiv = document.getElementById('results');
-            if (resultsDiv.style.display === 'block') {
-                resultsDiv.style.display = 'none';
-                this.textContent = 'Show Current Results';
-            } else {
-                resultsDiv.style.display = 'block';
-                this.textContent = 'Hide Results';
-                calculateResults();
-            }
-        });
-
-        // Load existing votes from localStorage if available
-        window.addEventListener('load', function() {
-            const storedVotes = localStorage.getItem('bookClubVotes');
-            if (storedVotes) {
-                votes = JSON.parse(storedVotes);
-                if (votes.length > 0) {
-                    document.getElementById('show-results').classList.remove('hidden');
-                    document.getElementById('export-section').classList.remove('hidden');
-                    document.getElementById('export-data').value = storedVotes;
-                }
-            }
-        });
-
-        // Calculate ranked choice voting results
-        function calculateResults() {
-            if (votes.length === 0) return;
+        // Function to submit data to Google Script
+        function submitToGoogleScript(data) {
+            const submitButton = document.getElementById('submit-vote');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Submitting...';
             
-            document.getElementById('voter-count').textContent = votes.length;
-            
-            // Calculate Borda count (simple rank-based scoring)
-            // In this method, each first-place vote is worth n points (n = total choices),
-            // second-place is worth n-1 points, and so on
-            const totalBooks = books.length;
-            let bookScores = {};
-            
-            // Initialize scores
-            books.forEach(book => {
-                bookScores[book.id] = 0;
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                document.getElementById('success-message').style.display = 'block';
+                document.getElementById('error-message').style.display = 'none';
+                submitButton.textContent = 'Vote Submitted';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('error-message').style.display = 'block';
+                document.getElementById('success-message').style.display = 'none';
+                submitButton.disabled = false;
+                submitButton.textContent = 'Submit Vote';
             });
-            
-            // Calculate scores based on rankings
-            votes.forEach(vote => {
-                vote.rankings.forEach(ranking => {
-                    // Points = (total books + 1) - rank
-                    // So 1st place gets totalBooks points, 2nd gets totalBooks-1, etc.
-                    bookScores[ranking.bookId] += (totalBooks + 1) - ranking.rank;
-                });
-            });
-            
-            // Convert to array for sorting
-            const results = books.map(book => ({
-                id: book.id,
-                title: book.title,
-                author: book.author,
-                score: bookScores[book.id]
-            }));
-            
-            // Sort by score (highest first)
-            results.sort((a, b) => b.score - a.score);
-            
-            // Display results
-            const resultsBody = document.getElementById('results-body');
-            resultsBody.innerHTML = '';
-            
-            results.forEach((result, index) => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${index + 1}</td>
-                    <td>${result.title} <i>(${result.author})</i></td>
-                    <td>${result.score}</td>
-                `;
-                resultsBody.appendChild(row);
-            });
-            
-            document.getElementById('results').style.display = 'block';
         }
-
-        // Copy export data to clipboard
-        document.getElementById('copy-data').addEventListener('click', function() {
-            const exportData = document.getElementById('export-data');
-            exportData.select();
-            document.execCommand('copy');
-            alert('Data copied to clipboard!');
-        });
-
-        // Import data
-        document.getElementById('import-button').addEventListener('click', function() {
-            const importData = document.getElementById('import-data').value.trim();
-            if (!importData) {
-                alert('Please paste data to import.');
-                return;
-            }
-            
-            try {
-                const importedVotes = JSON.parse(importData);
-                if (Array.isArray(importedVotes)) {
-                    votes = importedVotes;
-                    localStorage.setItem('bookClubVotes', JSON.stringify(votes));
-                    document.getElementById('export-data').value = importData;
-                    
-                    if (votes.length > 0) {
-                        document.getElementById('show-results').classList.remove('hidden');
-                        calculateResults();
-                        alert('Data imported successfully!');
-                    }
-                } else {
-                    throw new Error('Invalid data format');
-                }
-            } catch (error) {
-                alert('Invalid data format. Please check the imported data.');
-            }
-        });
     </script>
 </body>
 </html>
